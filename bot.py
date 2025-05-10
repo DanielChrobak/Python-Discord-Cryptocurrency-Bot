@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Get tokens from .env file
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+DISCORD_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 CMC_API_KEY = os.getenv("CMC_API_KEY")
 
 # Initialize Discord client
