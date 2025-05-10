@@ -22,21 +22,54 @@ tree = app_commands.CommandTree(client)
 # Data storage
 DATA_FILE = "crypto_bot_data.json"
 
-# Default data structure
-default_data = {
+# Stylesheet storage
+STYLES_FILE = "crypto_bot_styles.json"
+
+# Default config structure
+default_config = {
     "guilds": {}
 }
 
-# Load data from JSON file
-def load_data():
+# Default styles structure
+default_styles = {
+    "price_up_icon": "📈",
+    "price_down_icon": "📉",
+}
+
+CONFIG = {}
+STYLES = {}
+
+
+def load_styles(path: str, defaults: dict) -> dict:
+    '''
+    Load style data from JSON or give reasonable defaults.
+    '''
+    data = dict(default_styles)
+    data.update(load_json(STYLES_FILE))
+    return data
+
+
+def load_config() -> dict:
+    '''
+    Load bot data from JSON or give reasonable defaults.
+    '''
+    data = dict(default_config)
+    data.update(load_json(DATA_FILE))
+    return data
+
+
+def load_json(path: str) -> dict:
+    '''
+    Load data from JSON file or fail quietly and return empty dict.
+    '''
     try:
-        with open(DATA_FILE, 'r') as f:
+        with open(path, 'r') as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
-        return default_data
+        return {}
 
 # Save data to JSON file
-def save_data(data):
+def save_config(data):
     with open(DATA_FILE, 'w') as f:
         json.dump(data, f, indent=4)
 
@@ -96,9 +129,7 @@ async def update_message_tickers_loop():
 
 # Update all voice channels with current prices
 async def update_all_voice_channels():
-    data = load_data()
-    
-    for guild_id, guild_data in data["guilds"].items():
+    for guild_id, guild_data in CONFIG["guilds"].items():
         if "update_category" not in guild_data or "voice_tickers" not in guild_data:
             continue
             
@@ -163,9 +194,7 @@ async def update_all_voice_channels():
 
 # Update all message tickers
 async def update_all_message_tickers():
-    data = load_data()
-    
-    for guild_id, guild_data in data["guilds"].items():
+    for guild_id, guild_data in CONFIG["guilds"].items():
         guild = client.get_guild(int(guild_id))
         if not guild:
             continue
@@ -225,15 +254,14 @@ async def set_voice_update_category(interaction, category_id: str):
             return
         
         # Update data
-        data = load_data()
-        if guild_id not in data["guilds"]:
-            data["guilds"][guild_id] = {}
+        if guild_id not in CONFIG["guilds"]:
+            CONFIG["guilds"][guild_id] = {}
         
-        data["guilds"][guild_id]["update_category"] = category_id
-        if "voice_tickers" not in data["guilds"][guild_id]:
-            data["guilds"][guild_id]["voice_tickers"] = []
+        CONFIG["guilds"][guild_id]["update_category"] = category_id
+        if "voice_tickers" not in CONFIG["guilds"][guild_id]:
+            CONFIG["guilds"][guild_id]["voice_tickers"] = []
         
-        save_data(data)
+        save_config(CONFIG)
         await interaction.response.send_message(f"Update category set to {category.name}", ephemeral=True)
     
     except ValueError:
@@ -251,9 +279,8 @@ async def add_voice_ticker(interaction, ticker: str):
     
     ticker = ticker.upper()
     guild_id = str(interaction.guild_id)
-    data = load_data()
     
-    if guild_id not in data["guilds"] or "update_category" not in data["guilds"][guild_id]:
+    if guild_id not in CONFIG["guilds"] or "update_category" not in CONFIG["guilds"][guild_id]:
         await interaction.followup.send("Please set an update category first using /set_update_category", ephemeral=True)
         return
     
@@ -263,12 +290,12 @@ async def add_voice_ticker(interaction, ticker: str):
         await interaction.followup.send(f"Ticker {ticker} not found on CoinMarketCap.", ephemeral=True)
         return
     
-    if "voice_tickers" not in data["guilds"][guild_id]:
-        data["guilds"][guild_id]["voice_tickers"] = []
+    if "voice_tickers" not in CONFIG["guilds"][guild_id]:
+        CONFIG["guilds"][guild_id]["voice_tickers"] = []
     
-    if ticker not in data["guilds"][guild_id]["voice_tickers"]:
-        data["guilds"][guild_id]["voice_tickers"].append(ticker)
-        save_data(data)
+    if ticker not in CONFIG["guilds"][guild_id]["voice_tickers"]:
+        CONFIG["guilds"][guild_id]["voice_tickers"].append(ticker)
+        save_config(CONFIG)
         
         # Force update the voice channels
         await update_all_voice_channels()
@@ -285,12 +312,11 @@ async def remove_voice_ticker(interaction, ticker: str):
     
     ticker = ticker.upper()
     guild_id = str(interaction.guild_id)
-    data = load_data()
     
-    if guild_id in data["guilds"] and "voice_tickers" in data["guilds"][guild_id]:
-        if ticker in data["guilds"][guild_id]["voice_tickers"]:
-            data["guilds"][guild_id]["voice_tickers"].remove(ticker)
-            save_data(data)
+    if guild_id in CONFIG["guilds"] and "voice_tickers" in CONFIG["guilds"][guild_id]:
+        if ticker in CONFIG["guilds"][guild_id]["voice_tickers"]:
+            CONFIG["guilds"][guild_id]["voice_tickers"].remove(ticker)
+            save_config(CONFIG)
             
             # Force update to remove the channel
             await update_all_voice_channels()
@@ -333,15 +359,14 @@ async def add_message_ticker(interaction, ticker: str, channel_id: str):
             await interaction.response.send_message(f"Ticker {ticker} not found on CoinMarketCap.", ephemeral=True)
             return
         
-        data = load_data()
-        if guild_id not in data["guilds"]:
-            data["guilds"][guild_id] = {}
+        if guild_id not in CONFIG["guilds"]:
+            CONFIG["guilds"][guild_id] = {}
         
-        if "message_tickers" not in data["guilds"][guild_id]:
-            data["guilds"][guild_id]["message_tickers"] = {}
+        if "message_tickers" not in CONFIG["guilds"][guild_id]:
+            CONFIG["guilds"][guild_id]["message_tickers"] = {}
         
-        data["guilds"][guild_id]["message_tickers"][ticker] = channel_id
-        save_data(data)
+        CONFIG["guilds"][guild_id]["message_tickers"][ticker] = channel_id
+        save_config(CONFIG)
         
         await interaction.response.send_message(f"Added {ticker} price messages to <#{channel_id}>", ephemeral=True)
     
@@ -357,12 +382,11 @@ async def remove_message_ticker(interaction, ticker: str):
     
     ticker = ticker.upper()
     guild_id = str(interaction.guild_id)
-    data = load_data()
     
-    if guild_id in data["guilds"] and "message_tickers" in data["guilds"][guild_id]:
-        if ticker in data["guilds"][guild_id]["message_tickers"]:
-            del data["guilds"][guild_id]["message_tickers"][ticker]
-            save_data(data)
+    if guild_id in CONFIG["guilds"] and "message_tickers" in CONFIG["guilds"][guild_id]:
+        if ticker in CONFIG["guilds"][guild_id]["message_tickers"]:
+            del CONFIG["guilds"][guild_id]["message_tickers"][ticker]
+            save_config(CONFIG)
             await interaction.response.send_message(f"Removed {ticker} from price messages.", ephemeral=True)
             return
     
@@ -393,16 +417,15 @@ async def add_message_ratio_tickers(interaction, ticker1: str, ticker2: str, cha
             await interaction.response.send_message(f"One or both tickers not found on CoinMarketCap.", ephemeral=True)
             return
         
-        data = load_data()
-        if guild_id not in data["guilds"]:
-            data["guilds"][guild_id] = {}
+        if guild_id not in CONFIG["guilds"]:
+            CONFIG["guilds"][guild_id] = {}
         
-        if "ratio_tickers" not in data["guilds"][guild_id]:
-            data["guilds"][guild_id]["ratio_tickers"] = {}
+        if "ratio_tickers" not in CONFIG["guilds"][guild_id]:
+            CONFIG["guilds"][guild_id]["ratio_tickers"] = {}
         
         pair_key = f"{ticker1}:{ticker2}"
-        data["guilds"][guild_id]["ratio_tickers"][pair_key] = channel_id
-        save_data(data)
+        CONFIG["guilds"][guild_id]["ratio_tickers"][pair_key] = channel_id
+        save_config(CONFIG)
         
         await interaction.response.send_message(f"Added {ticker1}:{ticker2} ratio messages to <#{channel_id}>", ephemeral=True)
     
@@ -423,12 +446,11 @@ async def remove_message_ratio_tickers(interaction, ticker1: str, ticker2: str):
     ticker2 = ticker2.upper()
     pair_key = f"{ticker1}:{ticker2}"
     guild_id = str(interaction.guild_id)
-    data = load_data()
     
-    if guild_id in data["guilds"] and "ratio_tickers" in data["guilds"][guild_id]:
-        if pair_key in data["guilds"][guild_id]["ratio_tickers"]:
-            del data["guilds"][guild_id]["ratio_tickers"][pair_key]
-            save_data(data)
+    if guild_id in CONFIG["guilds"] and "ratio_tickers" in CONFIG["guilds"][guild_id]:
+        if pair_key in CONFIG["guilds"][guild_id]["ratio_tickers"]:
+            del CONFIG["guilds"][guild_id]["ratio_tickers"][pair_key]
+            save_config(CONFIG)
             await interaction.followup.send(f"Removed {ticker1}:{ticker2} ratio from price messages.", ephemeral=True)
             return
     
@@ -444,8 +466,7 @@ async def force_update_message_tickers(interaction):
     await interaction.response.send_message("Updating all message tickers...", ephemeral=True)
     
     # Update only the regular message tickers
-    data = load_data()
-    for guild_id, guild_data in data["guilds"].items():
+    for guild_id, guild_data in CONFIG["guilds"].items():
         guild = client.get_guild(int(guild_id))
         if not guild:
             continue
@@ -477,8 +498,7 @@ async def force_update_ratio_tickers(interaction):
     await interaction.response.send_message("Updating all ratio tickers...", ephemeral=True)
     
     # Update only the ratio tickers
-    data = load_data()
-    for guild_id, guild_data in data["guilds"].items():
+    for guild_id, guild_data in CONFIG["guilds"].items():
         guild = client.get_guild(int(guild_id))
         if not guild:
             continue
@@ -509,7 +529,6 @@ async def show_settings(interaction):
         return
     
     guild_id = str(interaction.guild_id)
-    data = load_data()
     
     # Create embed
     embed = discord.Embed(
@@ -524,12 +543,12 @@ async def show_settings(interaction):
         embed.set_thumbnail(url=client.user.avatar.url)
     
     # Check if guild has any settings
-    if guild_id not in data["guilds"]:
+    if guild_id not in CONFIG["guilds"]:
         embed.add_field(name="Status", value="No settings configured yet.", inline=False)
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
     
-    guild_data = data["guilds"][guild_id]
+    guild_data = CONFIG["guilds"][guild_id]
     
     # Add update category info
     if "update_category" in guild_data:
