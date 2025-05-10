@@ -107,6 +107,7 @@ Application portal in order to operate correctly. This bot needs:
 ### Text Permissions
 
 * Send Messages
+* Embed Links
 
 ### Voice Permissions
 
