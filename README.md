@@ -8,7 +8,7 @@ A Discord bot that provides cryptocurrency information using the CoinMarketCap A
 2. Install dependencies with npm install or yarn install
 3. Configure environment variables:
    - Create a .env file in the root directory
-   - Add your DISCORD_TOKEN and CMC_API_KEY
+   - Add your DISCORD_BOT_TOKEN and CMC_API_KEY
 
 4. Start the bot with npm start or yarn start
 
