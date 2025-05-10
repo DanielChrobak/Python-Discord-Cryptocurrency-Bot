@@ -12,14 +12,20 @@ A Discord bot that provides real-time cryptocurrency price tracking using the Co
 
 1. Clone this repository
 2. Install required dependencies:
-   ```bash
-   pip install discord.py requests python-dotenv
+```
+pip install discord.py requests python-dotenv
+```
 
 3. Create a `.env` file in the root directory with the following variables:
 
 ```
 DISCORD_BOT_TOKEN=your_discord_bot_token
 CMC_API_KEY=your_coinmarketcap_api_key
+```
+
+4. Start the bot:
+```
+python bot.py
 ```
 
 ## Configuration Commands
