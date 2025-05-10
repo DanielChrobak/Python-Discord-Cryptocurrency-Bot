@@ -1,29 +1,23 @@
 # Discord Cryptocurrency Bot
 
-A Discord bot that provides cryptocurrency information using the CoinMarketCap API.
+A Discord bot that provides real-time cryptocurrency price tracking using the CoinMarketCap API.
+
+## Features
+
+- **Voice Channel Price Updates**: Creates voice channels showing current prices of cryptocurrencies
+- **Automatic Price Messages**: Sends regular price updates to designated text channels
+- **Price Ratio Tracking**: Monitors and reports exchange rates between cryptocurrency pairs
 
 ## Setup
 
 1. Clone this repository
-2. Install dependencies with npm install or yarn install
-3. Configure environment variables:
-   - Create a .env file in the root directory
-   - Add your DISCORD_BOT_TOKEN and CMC_API_KEY
+2. Install required dependencies:
+   ```bash
+   pip install discord.py requests python-dotenv
 
-4. Start the bot with `python bot.py`
+3. Create a `.env` file in the root directory with the following variables:
 
-## Features
-
-- [List your bot's features here]
-
-## Commands
-
-- [List available commands here]
-
-## Dependencies
-
-- [List major dependencies here]
-
-## License
-
-[Your chosen license]
+```
+DISCORD_BOT_TOKEN=your_discord_bot_token
+CMC_API_KEY=your_coinmarketcap_api_key
+```
