@@ -1,4 +1,4 @@
-# Discord Cryptocurrency Bot
+# Python Discord Cryptocurrency Bot
 
 A Discord bot that provides real-time cryptocurrency price tracking using the CoinMarketCap API.
 
