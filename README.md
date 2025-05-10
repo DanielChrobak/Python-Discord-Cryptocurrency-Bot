@@ -93,3 +93,20 @@ The bot stores configuration data in a JSON file (crypto_bot_data.json), which i
 ## License
 MIT License
 
+
+## Permissions
+
+All Discord bots need to be granted certain permissions in the Discord
+Application portal in order to operate correctly. This bot needs:
+
+### General Permissions
+
+* View Channels
+* Manage Channels
+
+### Text Permissions
+
+* Send Messages
+
+### Voice Permissions
+
