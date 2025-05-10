@@ -30,7 +30,7 @@ python bot.py
 
 ## Configuration Commands
 
-`/set_update_category <category_id>` - Set the category for price update voice channels
+`/set_voice_update_category <category_id>` - Set the category for price update voice channels
 
 `/force_update_tickers` - Force update all voice channels
 

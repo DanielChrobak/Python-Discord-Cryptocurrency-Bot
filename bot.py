@@ -207,8 +207,8 @@ async def update_all_message_tickers():
                         message = f"The swap rate of {ticker1}:{ticker2} is {ratio:.0f}:1 on [CMC]({cmc_url})"
                         await channel.send(message)
 
-@tree.command(name="set_update_category", description="Set the category for price update voice channels")
-async def set_update_category(interaction, category_id: str):
+@tree.command(name="set_voice_update_category", description="Set the category for price update voice channels")
+async def set_voice_update_category(interaction, category_id: str):
     # Check if user has admin permissions
     if not is_admin(interaction):
         await interaction.response.send_message("You need administrator permissions to use this command.", ephemeral=True)
