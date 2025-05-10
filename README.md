@@ -10,7 +10,7 @@ A Discord bot that provides cryptocurrency information using the CoinMarketCap A
    - Create a .env file in the root directory
    - Add your DISCORD_BOT_TOKEN and CMC_API_KEY
 
-4. Start the bot with npm start or yarn start
+4. Start the bot with `python bot.py`
 
 ## Features
 
