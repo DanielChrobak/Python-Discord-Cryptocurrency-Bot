@@ -25,6 +25,7 @@ CMC_API_KEY=your_coinmarketcap_api_key
 
 You can get a free CMC API Key [here](https://coinmarketcap.com/api/)
 You'll get 10,000 free credits monthly.
+
 4. Start the bot:
 ```
 python bot.py
