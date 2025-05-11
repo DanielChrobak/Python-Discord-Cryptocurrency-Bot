@@ -325,7 +325,7 @@ async def update_all_message_tickers():
                         price = crypto_data[ticker][0]["quote"]["USD"]["price"]
                         slug = crypto_data[ticker][0]["slug"]
                         cmc_url = f"<https://coinmarketcap.com/currencies/{slug}/>"
-                        message = f"The price of {name} ({ticker}) is {price:.2f} USD on [CMC](<{cmc_url}>)"
+                        message = f"The price of {name} ({ticker}) is {price:.2f} USD on [CMC]({cmc_url})"
                         await channel.send(message)
         
         # Ratio ticker messages
@@ -342,7 +342,7 @@ async def update_all_message_tickers():
                     ratio = price2 / price1
                     slug1 = crypto_data[ticker1][0]["slug"]
                     cmc_url = f"<https://coinmarketcap.com/currencies/{slug1}/>"
-                    message = f"The swap rate of {ticker1}:{ticker2} is {ratio:.0f}:1 on [CMC](<{cmc_url}>)"
+                    message = f"The swap rate of {ticker1}:{ticker2} is {ratio:.0f}:1 on [CMC]({cmc_url})"
                     await channel.send(message)
 
 @tree.command(name="set_voice_update_category", description="Set the category for price update voice channels")
