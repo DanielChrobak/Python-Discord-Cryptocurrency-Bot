@@ -8,6 +8,10 @@ import requests
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 from dataclasses import dataclass, field
+import logging
+
+
+logger = logging.getLogger('main')
 
 
 @dataclass
@@ -174,7 +178,7 @@ async def fetch_crypto_data(symbols: List[str]):
         data = response.json()
         return data["data"]
     except Exception as e:
-        print(f"Error fetching crypto data: {e}")
+        logger.exception("Error fetching crypto data")
         return {}
 
 # Format current time in UTC
@@ -190,11 +194,11 @@ voice_loop = None
 tickers_loop = None
 
 @client.event
-async def on_ready():
+async def on_connect():
     global voice_loop
     global tickers_loop
     await tree.sync()
-    print(f"{client.user} is connected to Discord!")
+    logger.info(f"{client.user} is connected to Discord!")
     
     # Start update loops
     voice_loop = client.loop.create_task(update_voice_channels_loop())
@@ -203,7 +207,7 @@ async def on_ready():
 
 @client.event
 async def on_disconnect():
-    print(f"{client.user} is disconnected.")
+    logging.info(f"{client.user} is disconnected.")
     global voice_loop
     global tickers_loop
     if voice_loop is not None:
@@ -230,12 +234,14 @@ async def update_message_tickers_loop():
 
 # Update all voice channels with current prices
 async def update_all_voice_channels():
+    logging.info("Updating all voice channels")
     for guild_config in Config.guilds.values():
         if guild_config.update_category is None or not guild_config.voice_tickers:
             continue
             
         guild = client.get_guild(guild_config.id)
         if not guild:
+            logging.warning("Configuration for bot lists a guild that may no longer exist: %d", guild_config.id)
             continue
             
         category_id = guild_config.update_category
@@ -293,8 +299,10 @@ async def update_all_voice_channels():
             else:
                 price_str = f"${price:.0f}"
             
+            logging.debug("Updating voice ticker for %s: %s", ticker, price_str)
             channel_name = f"{ticker} {price_str} {emoji}"
             await category.create_voice_channel(name=channel_name)
+
 
 # Update all message tickers
 async def update_all_message_tickers():
@@ -317,7 +325,7 @@ async def update_all_message_tickers():
                         price = crypto_data[ticker][0]["quote"]["USD"]["price"]
                         slug = crypto_data[ticker][0]["slug"]
                         cmc_url = f"<https://coinmarketcap.com/currencies/{slug}/>"
-                        message = f"The price of {name} ({ticker}) is {price:.2f} USD on [CMC]({cmc_url})"
+                        message = f"The price of {name} ({ticker}) is {price:.2f} USD on [CMC](<{cmc_url}>)"
                         await channel.send(message)
         
         # Ratio ticker messages
@@ -334,7 +342,7 @@ async def update_all_message_tickers():
                     ratio = price2 / price1
                     slug1 = crypto_data[ticker1][0]["slug"]
                     cmc_url = f"<https://coinmarketcap.com/currencies/{slug1}/>"
-                    message = f"The swap rate of {ticker1}:{ticker2} is {ratio:.0f}:1 on [CMC]({cmc_url})"
+                    message = f"The swap rate of {ticker1}:{ticker2} is {ratio:.0f}:1 on [CMC](<{cmc_url}>)"
                     await channel.send(message)
 
 @tree.command(name="set_voice_update_category", description="Set the category for price update voice channels")
