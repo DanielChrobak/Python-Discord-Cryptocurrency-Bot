@@ -7,7 +7,7 @@ import asyncio
 import requests
 from datetime import datetime, timezone
 from dotenv import load_dotenv
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -17,9 +17,9 @@ class GuildConfiguration:
     The guild's guild id.
     '''
     update_category: Optional[int] = None
-    voice_tickers: List[str] = {}
-    ratio_tickers: Dict[str,int] = {}
-    message_tickers: Dict[str, int] = {}
+    voice_tickers: List[str] = field(default_factory=list)
+    ratio_tickers: Dict[str,int] = field(default_factory=dict)
+    message_tickers: Dict[str, int] = field(default_factory=dict)
 
 
 @dataclass
