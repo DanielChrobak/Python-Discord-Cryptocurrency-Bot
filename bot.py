@@ -716,7 +716,7 @@ async def show_settings(interaction):
     
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
-CONFIG = load_config()
+Config = load_config()
 STYLES = load_styles()
 
 # Run the bot
