@@ -646,7 +646,7 @@ async def show_settings(interaction):
        
     # Add update category info
     if guild.update_category is not None:
-        category = discord.utils.get(interaction.guild.categories, guild.update_category)
+        category = discord.utils.get(interaction.guild.categories, id=guild.update_category)
         category_name = category.name if category else "Unknown (category may have been deleted)"
         
         embed.add_field(
