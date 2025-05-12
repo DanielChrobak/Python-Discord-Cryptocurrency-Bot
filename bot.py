@@ -221,16 +221,22 @@ async def on_disconnect():
 # Voice channel update loop (hourly)
 async def update_voice_channels_loop():
     await client.wait_until_ready()
-    while not client.is_closed():
-        await update_all_voice_channels()
-        await asyncio.sleep(3600)  # 1 hour
+    while True:
+        if not client.is_closed():
+            await update_all_voice_channels()
+            await asyncio.sleep(3600)  # 1 hour
+        else:
+            await asyncio.sleep(300)
 
 # Message update loop (30 minutes)
 async def update_message_tickers_loop():
     await client.wait_until_ready()
-    while not client.is_closed():
-        await update_all_message_tickers()
-        await asyncio.sleep(1800)  # 30 minutes
+    while True:
+        if not client.is_closed():
+            await update_all_message_tickers()
+            await asyncio.sleep(1800)  # 30 minutes
+        else:
+            await asyncio.sleep(300)
 
 # Update all voice channels with current prices
 async def update_all_voice_channels():
