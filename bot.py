@@ -311,7 +311,7 @@ async def update_all_voice_channels():
 
 
 # Update all message tickers
-async def update_all_message_tickers():
+async def update_all_message_tickers(do_regulars: bool=True, do_ratios: bool=True):
     for guild_config in Config.guilds.values():
         guild = client.get_guild(guild.id)
         if not guild:
@@ -319,7 +319,7 @@ async def update_all_message_tickers():
         
         # Regular ticker messages
         message_tickers = guild_config.message_tickers
-        if message_tickers:
+        if message_tickers and do_regulars:
             symbols = list(message_tickers.keys())
             crypto_data = await fetch_crypto_data(symbols)
             
@@ -335,7 +335,10 @@ async def update_all_message_tickers():
                         await channel.send(message)
         
         # Ratio ticker messages
-        ratio_tickers = guild_config.ratio_tickers            
+        if do_ratios:
+            ratio_tickers = guild_config.ratio_tickers
+        else:
+            ratio_tickers = {}
         for pair, channel_id in ratio_tickers.items():
             ticker1, ticker2 = pair.split(":")
             crypto_data = await fetch_crypto_data([ticker1, ticker2])
@@ -568,6 +571,7 @@ async def remove_message_ratio_tickers(interaction, ticker1: str, ticker2: str):
     
     await interaction.followup.send(f"Ratio {ticker1}:{ticker2} is not currently being tracked.", ephemeral=True)
 
+
 @tree.command(name="force_update_message_tickers", description="Force update all message tickers")
 async def force_update_message_tickers(interaction):
     # Check if user has admin permissions
@@ -576,7 +580,18 @@ async def force_update_message_tickers(interaction):
         return
     
     await interaction.response.send_message("Updating all message tickers...", ephemeral=True)
-    await update_all_message_tickers()
+    await update_all_message_tickers(do_regulars=True, do_ratios=False)
+
+
+@tree.command(name="force_update_ratio_tickers", description="Force update all ratio-based tickers")
+async def force_update_ratio_tickers(interaction):
+    # Check if user has admin permissions
+    if not is_admin(interaction):
+        await interaction.response.send_message("You need administrator permissions to use this command.", ephemeral=True)
+        return
+    
+    await interaction.response.send_message("Updating all ratio tickers...", ephemeral=True)
+    await update_all_message_tickers(do_regulars=False, do_ratios=True)
 
 
 @tree.command(name="show_settings", description="Show all current bot settings")
