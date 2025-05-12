@@ -81,7 +81,7 @@ def to_all_ints(d: Dict[str,str]) -> Dict[str,int]:
     dictionary of strings->ints under the assumption that the former was
     in place simply to avoid JSON data loss.
     '''
-    return { k: str(v) for k, v in d.items() }
+    return { k: int(v) for k, v in d.items() }
 
 
 def config_from_dict(d: Dict) -> Configuration:
@@ -655,7 +655,7 @@ async def show_settings(interaction):
     if message_tickers:
         tickers_text = ""
         for ticker, channel_id in message_tickers.items():
-            channel = interaction.guild.get_channel(int(channel_id))
+            channel = interaction.guild.get_channel(channel_id)
             channel_name = channel.name if channel else "Unknown channel"
             tickers_text += f"**{ticker}** → #{channel_name} ({channel_id})\n"
         
