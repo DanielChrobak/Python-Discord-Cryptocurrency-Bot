@@ -449,36 +449,7 @@ async def add_message_ticker(interaction, ticker: str, channel_id: str):
     if not is_admin(interaction):
         await interaction.response.send_message("You need administrator permissions to use this command.", ephemeral=True)
         return
-    
-    ticker = ticker.upper()
-    guild_id = interaction.guild_id
-    
-    try:
-        channel_id = int(channel_id)
-        channel = client.get_channel(channel_id)
-        
-        if not channel:
-            await interaction.response.send_message("Channel not found. Please provide a valid channel ID.", ephemeral=True)
-            return
-        
-        # Verify the ticker exists
-        crypto_data = await fetch_crypto_data([ticker])
-        if ticker not in crypto_data:
-            await interaction.response.send_message(f"Ticker {ticker} not found on CoinMarketCap.", ephemeral=True)
-            return
-        
-        guild = Config.guilds.get(guild_id)
-        if guild is None:
-            guild = GuildConfiguration(id=guild_id)
-            Config.guilds[guild_id] = guild
-        
-        guild.message_tickers[ticker] = channel_id
-        save_config(Config)
-        
-        await interaction.response.send_message(f"Added {ticker} price messages to <#{channel_id}>", ephemeral=True)
-    
-    except ValueError:
-        await interaction.response.send_message("Please provide a valid channel ID (numbers only).", ephemeral=True)
+    await update_all_message_tickers()
 
 @tree.command(name="remove_message_ticker", description="Remove a ticker from regular price messages")
 async def remove_message_ticker(interaction, ticker: str):
