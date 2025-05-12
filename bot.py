@@ -455,7 +455,37 @@ async def add_message_ticker(interaction, ticker: str, channel_id: str):
     if not is_admin(interaction):
         await interaction.response.send_message("You need administrator permissions to use this command.", ephemeral=True)
         return
-    await update_all_message_tickers()
+    
+    ticker = ticker.upper()
+    guild_id = interaction.guild_id
+    
+    try:
+        channel_id = int(channel_id)
+        channel = client.get_channel(channel_id)
+        
+        if not channel:
+            await interaction.response.send_message("Channel not found. Please provide a valid channel ID.", ephemeral=True)
+            return
+        
+        # Verify the ticker exists
+        crypto_data = await fetch_crypto_data([ticker])
+        if ticker not in crypto_data:
+            await interaction.response.send_message(f"Ticker {ticker} not found on CoinMarketCap.", ephemeral=True)
+            return
+        
+        guild = Config.guilds.get(guild_id)
+        if guild is None:
+            guild = GuildConfiguration(id=guild_id)
+            Config.guilds[guild_id] = guild
+        
+        guild.message_tickers[ticker] = channel_id
+        save_config(Config)
+        
+        await interaction.response.send_message(f"Added {ticker} price messages to <#{channel_id}>", ephemeral=True)
+    
+    except ValueError:
+        await interaction.response.send_message("Please provide a valid channel ID (numbers only).", ephemeral=True)
+
 
 @tree.command(name="remove_message_ticker", description="Remove a ticker from regular price messages")
 async def remove_message_ticker(interaction, ticker: str):
@@ -546,59 +576,7 @@ async def force_update_message_tickers(interaction):
         return
     
     await interaction.response.send_message("Updating all message tickers...", ephemeral=True)
-    
-    # Update only the regular message tickers
-    for guild_config in Config.guilds.values():
-        guild = client.get_guild(guild_config.id)
-        if not guild:
-            continue
-        
-        message_tickers = guild_config.message_tickers
-        if message_tickers:
-            symbols = list(message_tickers.keys())
-            crypto_data = await fetch_crypto_data(symbols)
-            
-            for ticker, channel_id in message_tickers.items():
-                if ticker in crypto_data:
-                    channel = client.get_channel(int(channel_id))
-                    if channel:
-                        name = crypto_data[ticker][0]["name"]
-                        price = crypto_data[ticker][0]["quote"]["USD"]["price"]
-                        slug = crypto_data[ticker][0]["slug"]
-                        cmc_url = f"https://coinmarketcap.com/currencies/{slug}/"
-                        message = f"The price of {name} ({ticker}) is {price:.2f} USD on [CMC]({cmc_url})"
-                        await channel.send(message)
-
-@tree.command(name="force_update_ratio_tickers", description="Force update all ratio tickers")
-async def force_update_ratio_tickers(interaction):
-    # Check if user has admin permissions
-    if not is_admin(interaction):
-        await interaction.response.send_message("You need administrator permissions to use this command.", ephemeral=True)
-        return
-    
-    await interaction.response.send_message("Updating all ratio tickers...", ephemeral=True)
-    
-    # Update only the ratio tickers
-    for guild_config in Config.guilds.values():
-        guild = client.get_guild(guild_config.id)
-        if not guild:
-            continue
-        
-        ratio_tickers = guild_config.ratio_tickers
-        for pair, channel_id in ratio_tickers.items():
-            ticker1, ticker2 = pair.split(":")
-            crypto_data = await fetch_crypto_data([ticker1, ticker2])
-            
-            if ticker1 in crypto_data and ticker2 in crypto_data:
-                channel = client.get_channel(int(channel_id))
-                if channel:
-                    price1 = crypto_data[ticker1][0]["quote"]["USD"]["price"]
-                    price2 = crypto_data[ticker2][0]["quote"]["USD"]["price"]
-                    ratio = price2 / price1
-                    slug1 = crypto_data[ticker1][0]["slug"]
-                    cmc_url = f"https://coinmarketcap.com/currencies/{slug1}/"
-                    message = f"The swap rate of {ticker1}:{ticker2} is {ratio:.0f}:1 on [CMC]({cmc_url})"
-                    await channel.send(message)
+    await update_all_message_tickers()
 
 
 @tree.command(name="show_settings", description="Show all current bot settings")
