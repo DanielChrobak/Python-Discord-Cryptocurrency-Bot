@@ -11,7 +11,13 @@ from dataclasses import dataclass, field
 import logging
 
 
-logger = logging.getLogger('main')
+logformat = '%(asctime)s.%(msecs)03d %(name)-6s:[%(levelname)-8s] %(message)s'
+logging.basicConfig(
+    format=logformat,
+    datefmt='%Y-%m-%dT%H:%M:%S',
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -198,7 +204,7 @@ async def on_connect():
     global voice_loop
     global tickers_loop
     await tree.sync()
-    logger.info(f"{client.user} is connected to Discord!")
+    logger.info(f"{client.user} connected.")
     
     # Start update loops
     voice_loop = client.loop.create_task(update_voice_channels_loop())
@@ -207,13 +213,15 @@ async def on_connect():
 
 @client.event
 async def on_disconnect():
-    logging.info(f"{client.user} is disconnected.")
+    logging.info(f"{client.user} disconnected.")
     global voice_loop
     global tickers_loop
     if voice_loop is not None:
+        logging.info(f"Cancelling voice updates")
         voice_loop.cancel()
         voice_loop = None
     if tickers_loop is not None:
+        logging.info(f"Cancelling ticker updates")
         tickers_loop.cancel()
         tickers_loop = None
 
@@ -226,6 +234,7 @@ async def update_voice_channels_loop():
             await update_all_voice_channels()
             await asyncio.sleep(3600)  # 1 hour
         else:
+            logging.info(f"Skipping voice update; client disconnected.")
             await asyncio.sleep(300)
 
 # Message update loop (30 minutes)
@@ -236,6 +245,7 @@ async def update_message_tickers_loop():
             await update_all_message_tickers()
             await asyncio.sleep(1800)  # 30 minutes
         else:
+            logging.info(f"Skipping tickers update; client disconnected.")
             await asyncio.sleep(300)
 
 # Update all voice channels with current prices
