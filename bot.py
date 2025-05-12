@@ -95,9 +95,8 @@ def config_from_dict(d: Dict) -> Configuration:
     Produce a bot configuration struct from a dictionary loaded, presumably,
     from JSON.
     '''
-    guilds_in: Dict = d.get('guilds', {})
     guilds: Dict[int,GuildConfiguration] = {}
-    for guild_id_s, guild_data in guilds_in.items():
+    for guild_id_s, guild_data in d.items():
         guild_id = int(guild_id_s)
         update_category = guild_data.get('update_category')
         if update_category is not None:
@@ -200,35 +199,29 @@ voice_loop = None
 tickers_loop = None
 
 @client.event
-async def on_connect():
+async def on_ready():
     global voice_loop
     global tickers_loop
     await tree.sync()
-    logger.info(f"{client.user} connected.")
+    logger.info(f"{client.user} ready.")
     
     # Start update loops
-    voice_loop = client.loop.create_task(update_voice_channels_loop())
-    tickers_loop = client.loop.create_task(update_message_tickers_loop())
+    if voice_loop is None:
+        voice_loop = client.loop.create_task(update_voice_channels_loop())
+    if tickers_loop is None:
+        tickers_loop = client.loop.create_task(update_message_tickers_loop())
 
 
 @client.event
 async def on_disconnect():
     logging.info(f"{client.user} disconnected.")
-    global voice_loop
-    global tickers_loop
-    if voice_loop is not None:
-        logging.info(f"Cancelling voice updates")
-        voice_loop.cancel()
-        voice_loop = None
-    if tickers_loop is not None:
-        logging.info(f"Cancelling ticker updates")
-        tickers_loop.cancel()
-        tickers_loop = None
 
 
 # Voice channel update loop (hourly)
 async def update_voice_channels_loop():
+    logger.info("Begining voice update loop, waiting for ready")
     await client.wait_until_ready()
+    logger.info("Voice update loop starting.")
     while True:
         if not client.is_closed():
             await update_all_voice_channels()
@@ -239,7 +232,9 @@ async def update_voice_channels_loop():
 
 # Message update loop (30 minutes)
 async def update_message_tickers_loop():
+    logger.info("Begining message update loop, waiting for ready")
     await client.wait_until_ready()
+    logger.info("Message update loop starting.")
     while True:
         if not client.is_closed():
             await update_all_message_tickers()
@@ -316,7 +311,7 @@ async def update_all_voice_channels():
                 price_str = f"${price:.0f}"
             
             logging.debug("Updating voice ticker for %s: %s", ticker, price_str)
-            channel_name = f"{ticker} {price_str} {emoji}"
+            channel_name = f"{ticker} {emoji} {price_str}"
             await category.create_voice_channel(name=channel_name)
 
 
@@ -704,8 +699,10 @@ async def show_settings(interaction):
     
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
+
 Config = load_config()
 STYLES = load_styles()
+logger.info(Config)
 
 # Run the bot
 client.run(DISCORD_TOKEN)
