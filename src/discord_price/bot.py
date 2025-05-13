@@ -1,3 +1,4 @@
+import time
 from typing import Any, Dict, List, Optional
 import discord
 from discord import app_commands
@@ -217,18 +218,25 @@ async def on_disconnect():
     logging.info(f"{client.user} disconnected.")
 
 
+async def boundary_timer(cadence: int, name: str):
+    now = time.time()
+    next_boundary = (cadence - (now % cadence))
+    logger.info("Sleeping %f seconds until next %s boundary", next_boundary, name)
+    await asyncio.sleep(next_boundary)
+    while client.is_closed():
+        logging.info("Retrying %s update; client not currently connected.", name)
+        await asyncio.sleep(180)
+
+
 # Voice channel update loop (hourly)
 async def update_voice_channels_loop():
     logger.info("Begining voice update loop, waiting for ready")
     await client.wait_until_ready()
     logger.info("Voice update loop starting.")
     while True:
-        if not client.is_closed():
-            await update_all_voice_channels()
-            await asyncio.sleep(3600)  # 1 hour
-        else:
-            logging.info(f"Skipping voice update; client disconnected.")
-            await asyncio.sleep(300)
+        await boundary_timer(3600, "voice update")
+        await update_all_voice_channels()
+
 
 # Message update loop (30 minutes)
 async def update_message_tickers_loop():
@@ -236,12 +244,9 @@ async def update_message_tickers_loop():
     await client.wait_until_ready()
     logger.info("Message update loop starting.")
     while True:
-        if not client.is_closed():
-            await update_all_message_tickers()
-            await asyncio.sleep(1800)  # 30 minutes
-        else:
-            logging.info(f"Skipping tickers update; client disconnected.")
-            await asyncio.sleep(300)
+        await boundary_timer(1800, "message")
+        await update_all_message_tickers()
+
 
 # Update all voice channels with current prices
 async def update_all_voice_channels():
