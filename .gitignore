@@ -1,3 +1,4 @@
 .env
 env/
 crypto_bot_data.json
+crypto_bot_styles.json
