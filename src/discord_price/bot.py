@@ -322,6 +322,7 @@ async def update_all_voice_channels():
 
 # Update all message tickers
 async def update_all_message_tickers(do_regulars: bool=True, do_ratios: bool=True):
+    logging.info("Updating all message channels")
     for guild_config in Config.guilds.values():
         guild = client.get_guild(guild_config.id)
         if not guild:
