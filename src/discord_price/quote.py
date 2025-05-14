@@ -69,7 +69,7 @@ async def fetch_crypto_data(api_key: str, symbols: List[str]) -> List[PriceQuote
 
     try:
         response = requests.get(url, headers=headers, params=params)
-        data: dict = response.json()
+        data: dict = response.json()["data"]
         return [
             quote_from_json_blob(symbol, item)
             for symbol, item in data.items()
@@ -79,13 +79,14 @@ async def fetch_crypto_data(api_key: str, symbols: List[str]) -> List[PriceQuote
         return {}
 
 
-def quote_from_json_blob(symbol: str, item: Dict) -> PriceQuote:
-    first = item[0]["quote"]["USD"]
+def quote_from_json_blob(symbol: str, item: List) -> PriceQuote:
+    first = item[0]
+    quote_data = first["quote"]["USD"]
     quote = PriceQuote(
         symbol=symbol,
         name=first["name"],
         slug=first["slug"],
-        price_usd=first["price"],
-        percent_change_1h=first["percent_change_1h"],
-        market_cap=first["market_cap"],
+        price_usd=quote_data["price"],
+        percent_change_1h=quote_data["percent_change_1h"],
+        market_cap=quote_data["market_cap"],
     )
