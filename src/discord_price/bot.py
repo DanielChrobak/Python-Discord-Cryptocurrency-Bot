@@ -667,4 +667,4 @@ PriceQuoter = PriceQuoteCache(CMC_API_KEY)
 logger.info(Config)
 
 # Run the bot
-client.run(DISCORD_TOKEN)
+client.run(DISCORD_TOKEN, log_handler=None)
