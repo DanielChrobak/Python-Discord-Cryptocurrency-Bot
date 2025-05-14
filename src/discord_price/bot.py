@@ -1,16 +1,15 @@
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 import discord
 from discord import app_commands
 import os
 import json
 import asyncio
-import requests
 from datetime import datetime, timezone
 from dotenv import load_dotenv
-from dataclasses import dataclass, field
 import logging
-
+from .config import GuildConfiguration, Configuration
+from .quote import PriceQuoteCache
 
 logformat = '%(asctime)s.%(msecs)03d %(name)-6s:[%(levelname)-8s] %(message)s'
 logging.basicConfig(
@@ -19,31 +18,6 @@ logging.basicConfig(
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class GuildConfiguration:
-    id: int
-    '''
-    The guild's guild id.
-    '''
-    update_category: Optional[int] = None
-    voice_tickers: List[str] = field(default_factory=list)
-    ratio_tickers: Dict[str,int] = field(default_factory=dict)
-    message_tickers: Dict[str, int] = field(default_factory=dict)
-
-
-@dataclass
-class Configuration:
-    '''
-    Configuration for the entire update bot.
-    '''
-
-    guilds: Dict[int,GuildConfiguration]
-    '''
-    Configuration for invididual servers under the bot's control. Indexed by
-    guild id.
-    '''
 
 
 # Load environment variables
@@ -71,6 +45,7 @@ default_styles = {
 }
 
 Config: Configuration = None
+PriceQuoter: PriceQuoteCache = None
 STYLES = {}
 
 
@@ -165,28 +140,6 @@ def save_config(c: Configuration):
     with open(DATA_FILE, 'w') as f:
         json.dump(d, f, indent=4)
 
-# Fetch crypto data from CoinMarketCap
-async def fetch_crypto_data(symbols: List[str]):
-    if not symbols:
-        return {}
-    
-    url = "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest"
-    headers = {
-        "X-CMC_PRO_API_KEY": CMC_API_KEY,
-        "Accept": "application/json"
-    }
-    params = {
-        "symbol": ",".join(symbols)
-    }
-
-    try:
-        response = requests.get(url, headers=headers, params=params)
-        data = response.json()
-        return data["data"]
-    except Exception as e:
-        logger.exception("Error fetching crypto data")
-        return {}
-
 # Format current time in UTC
 def get_utc_time():
     now = datetime.now(timezone.utc)
@@ -269,26 +222,12 @@ async def update_all_voice_channels():
         if not tickers:
             continue
             
-        crypto_data = await fetch_crypto_data(tickers)
-        if not crypto_data:
+        quotes = await PriceQuoter.fetch(tickers, time.time())
+        if not quotes:
             continue
         
-        # Sort tickers by market cap
-        ticker_data = []
-        for ticker in tickers:
-            if ticker in crypto_data:
-                price = crypto_data[ticker][0]["quote"]["USD"]["price"]
-                percent_change_1h = crypto_data[ticker][0]["quote"]["USD"]["percent_change_1h"]
-                market_cap = crypto_data[ticker][0]["quote"]["USD"]["market_cap"]
-                ticker_data.append({
-                    "symbol": ticker,
-                    "price": price,
-                    "percent_change_1h": percent_change_1h,
-                    "market_cap": market_cap
-                })
-        
         # Sort by market cap (highest first)
-        ticker_data.sort(key=lambda x: x["market_cap"], reverse=True)
+        ticker_data = sorted(quotes, key=lambda x: x.market_cap, reverse=True)
         
         # Delete all existing voice channels in the category
         for channel in category.voice_channels:
@@ -296,16 +235,14 @@ async def update_all_voice_channels():
         
         # Create new channels with updated prices
         _current_time = get_utc_time()
-        for ticker_info in ticker_data:
-            ticker = ticker_info["symbol"]
-            price = ticker_info["price"]
-            percent_change_1h = ticker_info["percent_change_1h"]
-            if percent_change_1h >= 0:
+        for quote in ticker_data:
+            if quote.percent_change_1h >= 0:
                 emoji = STYLES['price_up_icon']
             else:
                 emoji = STYLES['price_down_icon']
             
             # Format price based on its value
+            price = quote.price_usd
             if price < 0.01:
                 price_str = f"${price:.6f}"
             elif price < 1:
@@ -315,8 +252,8 @@ async def update_all_voice_channels():
             else:
                 price_str = f"${price:.0f}"
             
-            logging.debug("Updating voice ticker for %s: %s", ticker, price_str)
-            channel_name = f"{ticker} {emoji} {price_str}"
+            logging.debug("Updating voice ticker for %s: %s", quote.symbol, price_str)
+            channel_name = f"{quote.symbol} {emoji} {price_str}"
             await category.create_voice_channel(name=channel_name)
 
 
@@ -332,18 +269,26 @@ async def update_all_message_tickers(do_regulars: bool=True, do_ratios: bool=Tru
         message_tickers = guild_config.message_tickers
         if message_tickers and do_regulars:
             symbols = list(message_tickers.keys())
-            crypto_data = await fetch_crypto_data(symbols)
+            quotes = await PriceQuoter.fetch(symbols, time.time())
+            quotes_by_symbol = {
+                quote.symbol: quote
+                for quote in quotes
+            }
             
-            for ticker, channel_id in message_tickers.items():
-                if ticker in crypto_data:
-                    channel = client.get_channel(int(channel_id))
-                    if channel:
-                        name = crypto_data[ticker][0]["name"]
-                        price = crypto_data[ticker][0]["quote"]["USD"]["price"]
-                        slug = crypto_data[ticker][0]["slug"]
-                        cmc_url = f"<https://coinmarketcap.com/currencies/{slug}/>"
-                        message = f"The price of {name} ({ticker}) is {price:.2f} USD on [CMC]({cmc_url})"
-                        await channel.send(message)
+            for symbol, channel_id in message_tickers.items():
+                quote = quotes_by_symbol.get(symbol)
+                if quote is None:
+                    logger.warning("Skipping update for symbol %s as there is no data for it.", symbol)
+                    continue
+
+                channel = client.get_channel(channel_id)
+                if not channel:
+                    logger.warning("Unable to fetch channel %d data, skipping a quote", channel_id)
+                    continue
+
+                cmc_url = f"<https://coinmarketcap.com/currencies/{quote.slug}/>"
+                message = f"The price of {quote.name} ({symbol}) is {quote.price_usd:.2f} USD on [CMC]({cmc_url})"
+                await channel.send(message)
         
         # Ratio ticker messages
         if do_ratios:
@@ -352,18 +297,27 @@ async def update_all_message_tickers(do_regulars: bool=True, do_ratios: bool=Tru
             ratio_tickers = {}
         for pair, channel_id in ratio_tickers.items():
             ticker1, ticker2 = pair.split(":")
-            crypto_data = await fetch_crypto_data([ticker1, ticker2])
-            
-            if ticker1 in crypto_data and ticker2 in crypto_data:
-                channel = client.get_channel(int(channel_id))
-                if channel:
-                    price1 = crypto_data[ticker1][0]["quote"]["USD"]["price"]
-                    price2 = crypto_data[ticker2][0]["quote"]["USD"]["price"]
-                    ratio = price2 / price1
-                    slug1 = crypto_data[ticker1][0]["slug"]
-                    cmc_url = f"<https://coinmarketcap.com/currencies/{slug1}/>"
-                    message = f"The swap rate of {ticker1}:{ticker2} is {ratio:.0f}:1 on [CMC]({cmc_url})"
-                    await channel.send(message)
+            quotes = await PriceQuoter.fetch([ticker1, ticker2], time.time())
+            quotes_by_symbol = {
+                quote.symbol: quote
+                for quote in quotes
+            }
+            a = quotes_by_symbol.get(ticker1)
+            b = quotes_by_symbol.get(ticker2)
+            if a is None or b is None:
+                logger.warning("Skipping update for symbol pair %s:%s as there is no data for it.", ticker1, ticker2)
+                continue
+
+            channel = client.get_channel(channel_id)
+            if not channel:
+                logger.warning("Unable to fetch channel %d data, skipping a quote", channel_id)
+                continue
+
+            ratio = int(b.price_usd / a.price_usd)
+            cmc_url = f"<https://coinmarketcap.com/currencies/{a.slug}/>"
+            message = f"The swap rate of {ticker1}:{ticker2} is {ratio}:1 on [CMC]({cmc_url})"
+            await channel.send(message)
+
 
 @tree.command(name="set_voice_update_category", description="Set the category for price update voice channels")
 async def set_voice_update_category(interaction, category_id: str):
@@ -415,8 +369,8 @@ async def add_voice_ticker(interaction, ticker: str):
         return
     
     # Verify the ticker exists
-    crypto_data = await fetch_crypto_data([ticker])
-    if ticker not in crypto_data:
+    crypto_data = await PriceQuoter.fetch_no_cache([ticker])
+    if len(crypto_data) == 0:
         await interaction.followup.send(f"Ticker {ticker} not found on CoinMarketCap.", ephemeral=True)
         return
     
@@ -482,8 +436,8 @@ async def add_message_ticker(interaction, ticker: str, channel_id: str):
             return
         
         # Verify the ticker exists
-        crypto_data = await fetch_crypto_data([ticker])
-        if ticker not in crypto_data:
+        crypto_data = await PriceQuoter.fetch_no_cache([ticker])
+        if not crypto_data:
             await interaction.response.send_message(f"Ticker {ticker} not found on CoinMarketCap.", ephemeral=True)
             return
         
@@ -539,8 +493,9 @@ async def add_message_ratio_tickers(interaction, ticker1: str, ticker2: str, cha
             return
         
         # Verify the tickers exist
-        crypto_data = await fetch_crypto_data([ticker1, ticker2])
-        if ticker1 not in crypto_data or ticker2 not in crypto_data:
+        crypto_data = await PriceQuoter.fetch_no_cache([ticker1, ticker2])
+        by_symbol = { quote.symbol: quote for quote in crypto_data }
+        if by_symbol.get(ticker1) is None or by_symbol.get(ticker2) is None:
             await interaction.response.send_message(f"One or both tickers not found on CoinMarketCap.", ephemeral=True)
             return
         
@@ -708,6 +663,7 @@ async def show_settings(interaction):
 
 Config = load_config()
 STYLES = load_styles()
+PriceQuoter = PriceQuoteCache(CMC_API_KEY)
 logger.info(Config)
 
 # Run the bot
