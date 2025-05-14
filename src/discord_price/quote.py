@@ -82,7 +82,7 @@ async def fetch_crypto_data(api_key: str, symbols: List[str]) -> List[PriceQuote
 def quote_from_json_blob(symbol: str, item: List) -> PriceQuote:
     first = item[0]
     quote_data = first["quote"]["USD"]
-    quote = PriceQuote(
+    return PriceQuote(
         symbol=symbol,
         name=first["name"],
         slug=first["slug"],
