@@ -3,6 +3,7 @@ import requests
 from typing import List, Dict
 from dataclasses import dataclass
 import time
+from asyncio import Lock
 
 
 logger = logging.getLogger(__name__)
@@ -33,24 +34,36 @@ class PriceQuoteCache:
         self.api_key = api_key
         self.liveness_seconds = 60.0
         self.cache = {}
+        self.lock = Lock()
 
     async def fetch(self, symbols: List[str], now: float) -> List[PriceQuote]:
         have = []
         need = []
-        for symbol in symbols:
-            quote = self.cache.get(symbol)
-            if quote is not None and ((now - quote.when) < self.liveness_seconds):
-                have.append(quote.quote)
-            else:
-                need.append(symbol)
-        refreshed = await fetch_crypto_data(self.api_key, need)
-        now = time.time()
-        for new_quote in refreshed:
-            self.cache[new_quote.symbol] = TimestampedQuote(quote=new_quote, when=now)
+        async with self.lock:
+            for symbol in symbols:
+                quote = self.cache.get(symbol)
+                if quote is not None and ((now - quote.when) < self.liveness_seconds):
+                    have.append(quote.quote)
+                else:
+                    need.append(symbol)
+            if have:
+                haves = [quote.symbol for quote in have]
+                logger.info(f"Got cached prices for {', '.join(haves)}")
+            if need:
+                logger.info(f"Fetching new prices for {', '.join(need)}")
+            refreshed = await fetch_crypto_data(self.api_key, need)
+            now = time.time()
+            for new_quote in refreshed:
+                self.cache[new_quote.symbol] = TimestampedQuote(quote=new_quote, when=now)
         return have + refreshed
 
     async def fetch_no_cache(self, symbols: List[str]) -> List[PriceQuote]:
-        return await fetch_crypto_data(self.api_key, symbols)
+        with self.lock:
+            refreshed = await fetch_crypto_data(self.api_key, need)
+            now = time.time()
+            for new_quote in refreshed:
+                self.cache[new_quote.symbol] = TimestampedQuote(quote=new_quote, when=now)
+        return refreshed
 
 
 # Fetch crypto data from CoinMarketCap
