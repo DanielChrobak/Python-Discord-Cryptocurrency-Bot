@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools"]
+
+[project]
+version = "0.0.4"
+name = "py_discord_price_bot"
+authors = [
+    {name = "Daniel Chrobak", email = "danielchrobak12@gmail.com"},
+    {name = "Jeremy Cooper", email = "jeremy.gthb@baymoo.org"},
+]
+description = "A Discord bot posts token price updates to one or more servers."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+dependencies = [
+    "discord==2.3.2",
+    "dotenv==0.9.9",
+    "requests==2.32.3",
+]
