@@ -50,7 +50,7 @@ class PriceQuoteCache:
         return have + refreshed
 
     async def fetch_no_cache(self, symbols: List[str]) -> List[PriceQuote]:
-        return fetch_crypto_data(self.api_key, symbols)
+        return await fetch_crypto_data(self.api_key, symbols)
 
 
 # Fetch crypto data from CoinMarketCap
