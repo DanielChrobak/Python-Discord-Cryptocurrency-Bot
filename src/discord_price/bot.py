@@ -147,7 +147,10 @@ def get_utc_time():
 
 # Check if user has admin permissions
 def is_admin(interaction):
-    return interaction.user.guild_permissions.administrator
+    for role in interaction.user.roles:
+        if role.name == 'botty':
+            return True
+    return False
 
 voice_loop = None
 tickers_loop = None
