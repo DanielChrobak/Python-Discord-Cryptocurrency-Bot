@@ -58,7 +58,7 @@ class PriceQuoteCache:
         return have + refreshed
 
     async def fetch_no_cache(self, symbols: List[str]) -> List[PriceQuote]:
-        with self.lock:
+        async with self.lock:
             refreshed = await fetch_crypto_data(self.api_key, need)
             now = time.time()
             for new_quote in refreshed:
