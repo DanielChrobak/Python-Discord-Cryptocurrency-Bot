@@ -89,7 +89,7 @@ async def fetch_crypto_data(api_key: str, symbols: List[str]) -> List[PriceQuote
         ]
     except Exception as e:
         logger.exception("Error fetching crypto data")
-        return {}
+        return []
 
 
 def quote_from_json_blob(symbol: str, item: List) -> PriceQuote:
