@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 class GuildConfiguration:
     """Config for a single Discord guild/server."""
     id: int  # Guild/server ID
-    update_category: Optional[int] = None  # Voice update category ID
+    voice_update_category: Optional[int] = None  # Voice update category ID
     admin_role_id: Optional[int] = None    # Custom admin role ID
     cmc_api_key: Optional[str] = None      # Guild's CoinMarketCap API key
     voice_tickers: List[str] = field(default_factory=list)             # Voice ticker list
@@ -63,7 +63,7 @@ class ConfigManager:
             gid = int(gid_str)
             guilds[gid] = GuildConfiguration(
                 id=gid,
-                update_category=(int(gdat['update_category']) if gdat.get('update_category') else None),
+                voice_update_category=(int(gdat['voice_update_category']) if gdat.get('voice_update_category') else None),
                 admin_role_id=(int(gdat['admin_role_id']) if gdat.get('admin_role_id') else None),
                 cmc_api_key=gdat.get('cmc_api_key'),
                 voice_tickers=gdat.get('voice_tickers', []),
@@ -84,7 +84,7 @@ class ConfigManager:
                 'ratio_tickers'   : self._dumps_int_map(g.ratio_tickers),
                 'message_tickers' : self._dumps_int_map(g.message_tickers),
             }
-            if g.update_category: gdat['update_category'] = str(g.update_category)
+            if g.voice_update_category: gdat['voice_update_category'] = str(g.voice_update_category)
             if g.admin_role_id  : gdat['admin_role_id'] = str(g.admin_role_id)
             if g.cmc_api_key    : gdat['cmc_api_key'] = g.cmc_api_key
             data[str(g.id)] = gdat
