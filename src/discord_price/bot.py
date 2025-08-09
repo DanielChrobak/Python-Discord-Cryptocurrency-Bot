@@ -318,7 +318,7 @@ async def update_all_message_tickers(do_regulars: bool=True, do_ratios: bool=Tru
 
             ratio = int(b.price_usd / a.price_usd)
             cmc_url = f"<https://coinmarketcap.com/currencies/{a.slug}/>"
-            message = f"The swap rate of {ticker1}:{ticker2} is {ratio}:1 on [CMC]({cmc_url})"
+            message = f"The price ratio of {ticker1}:{ticker2} is {ratio}:1 on [CMC]({cmc_url})"
             await channel.send(message)
 
 
